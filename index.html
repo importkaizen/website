@@ -213,8 +213,9 @@
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            bottom: -2px; /* sit just below the image */
+            bottom: 0; /* align with tree base */
             width: 90%;
+            height: 140px; /* match viewBox height */
             pointer-events: none;
             z-index: 899;
             overflow: visible;
@@ -257,27 +258,27 @@
             <!-- multiple root branches; they will be revealed progressively -->
             <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMax meet">
                 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <!-- thin black root branches growing from base -->
-                        <path class="root-branch" d="M8 20 C28 48, 38 70, 48 104" />
-                        <path class="root-branch" d="M28 14 C48 44, 60 66, 74 102" />
-                        <path class="root-branch" d="M48 18 C68 46, 86 74, 98 110" />
-                        <path class="root-branch" d="M68 12 C88 42, 106 72, 120 110" />
-                        <path class="root-branch" d="M92 10 C112 38, 134 68, 148 108" />
-                        <path class="root-branch" d="M116 14 C136 44, 156 74, 172 112" />
-                        <path class="root-branch" d="M140 16 C160 46, 182 76, 198 116" />
-                        <path class="root-branch" d="M164 12 C184 44, 204 76, 222 118" />
-                        <path class="root-branch" d="M188 18 C208 52, 228 84, 252 124" />
-                        <path class="root-branch" d="M212 22 C232 56, 252 86, 276 128" />
-                        <path class="root-branch" d="M236 26 C256 60, 276 92, 300 132" />
-                        <path class="root-branch" d="M16 6 C36 30, 56 54, 80 94" />
-                        <path class="root-branch" d="M40 2 C60 26, 84 54, 110 96" />
-                        <path class="root-branch" d="M64 4 C84 30, 108 60, 136 100" />
-                        <path class="root-branch" d="M88 0 C108 30, 132 64, 164 104" />
-                        <path class="root-branch" d="M112 8 C132 36, 156 72, 192 116" />
-                        <path class="root-branch" d="M136 6 C156 36, 182 76, 216 118" />
-                        <path class="root-branch" d="M160 4 C180 34, 208 74, 248 120" />
-                        <path class="root-branch" d="M184 8 C204 40, 236 80, 284 128" />
-                        <path class="root-branch" d="M208 12 C228 44, 260 86, 308 132" />
+                        <!-- thin black root branches growing from base (flipped: start at Y=140, grow downward) -->
+                        <path class="root-branch" d="M8 120 C28 92, 38 70, 48 36" />
+                        <path class="root-branch" d="M28 126 C48 96, 60 74, 74 38" />
+                        <path class="root-branch" d="M48 122 C68 94, 86 66, 98 30" />
+                        <path class="root-branch" d="M68 128 C88 98, 106 68, 120 30" />
+                        <path class="root-branch" d="M92 130 C112 102, 134 72, 148 32" />
+                        <path class="root-branch" d="M116 126 C136 96, 156 66, 172 28" />
+                        <path class="root-branch" d="M140 124 C160 94, 182 64, 198 24" />
+                        <path class="root-branch" d="M164 128 C184 96, 204 64, 222 22" />
+                        <path class="root-branch" d="M188 122 C208 88, 228 56, 252 16" />
+                        <path class="root-branch" d="M212 118 C232 84, 252 54, 276 12" />
+                        <path class="root-branch" d="M236 114 C256 80, 276 48, 300 8" />
+                        <path class="root-branch" d="M16 134 C36 110, 56 86, 80 46" />
+                        <path class="root-branch" d="M40 138 C60 114, 84 86, 110 44" />
+                        <path class="root-branch" d="M64 136 C84 110, 108 80, 136 40" />
+                        <path class="root-branch" d="M88 140 C108 110, 132 76, 164 36" />
+                        <path class="root-branch" d="M112 132 C132 104, 156 68, 192 24" />
+                        <path class="root-branch" d="M136 134 C156 104, 182 64, 216 22" />
+                        <path class="root-branch" d="M160 136 C180 106, 208 66, 248 20" />
+                        <path class="root-branch" d="M184 132 C204 100, 236 60, 284 12" />
+                        <path class="root-branch" d="M208 128 C228 96, 260 54, 308 8" />
                     </g>
             </svg>
         </div>
