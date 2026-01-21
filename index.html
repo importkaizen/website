@@ -75,16 +75,76 @@
             color: #ddd;
         }
 
+        /* link preview tooltip */
+        .link-preview {
+            position: absolute;
+            background: rgba(77, 54, 43, 0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 12px 16px;
+            max-width: 300px;
+            font-size: 0.85em;
+            line-height: 1.4;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            margin-top: 8px;
+        }
+
+        .link-preview.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .link-preview-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+
+        .link-preview-content {
+            color: #ddd;
+            font-size: 0.9em;
+        }
+
 
         .note {
             margin: 30px 0;
             padding: 30px 0;
             border-top: 1px solid #fff;
             max-width: 48ch;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s cubic-bezier(.2,.9,.2,1), transform 0.4s cubic-bezier(.2,.9,.2,1);
+        }
+
+        .note.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .note.collapsed .note-body {
             display: none;
+        }
+
+        /* depth indicator - subtle visual hierarchy */
+        .note[data-depth="1"] {
+            border-left: 2px solid rgba(255,255,255,0.15);
+            padding-left: 20px;
+            margin-left: 10px;
+        }
+
+        .note[data-depth="2"] {
+            border-left: 2px solid rgba(255,255,255,0.1);
+            padding-left: 30px;
+            margin-left: 20px;
+        }
+
+        .note[data-depth="3"] {
+            border-left: 2px solid rgba(255,255,255,0.05);
+            padding-left: 40px;
+            margin-left: 30px;
         }
 
         .note-header {
@@ -245,13 +305,64 @@
             opacity: 1;
         }
 
+        /* breadcrumb trail */
+        #breadcrumb {
+            position: fixed;
+            top: 12px;
+            left: 120px;
+            font-size: 0.85em;
+            color: #ddd;
+            z-index: 998;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #breadcrumb.visible {
+            opacity: 1;
+        }
+
+        #breadcrumb a {
+            color: #ddd;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        #breadcrumb a:hover {
+            color: #fff;
+        }
+
+        #breadcrumb span {
+            margin: 0 6px;
+            color: #999;
+        }
+
+        /* connection lines between notes */
+        .note-connection {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.08;
+            stroke: #fff;
+            stroke-width: 1;
+            fill: none;
+        }
+
+        /* smooth transitions for note closing */
+        .note.closing {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
         @media (max-width: 900px) {
             #leafless-tree-wrap { display: none; }
+            #breadcrumb { display: none; }
         }
     </style>
 </head>
 <body>
     <h1><a href="javascript:void(0)">apostle</a></h1>
+    <div id="breadcrumb"></div>
     <div id="leafless-tree-wrap">
         <img id="leafless-tree" src="leaflessTree.jpg" alt="leafless tree" onerror="this.style.display='none'">
         <div id="tree-roots" aria-hidden="true">
@@ -284,7 +395,7 @@
         </div>
     </div>
     <div id="notes-container">
-        <div class="note" id="welcome">
+        <div class="note visible" id="welcome" data-depth="0">
             <h2><a class="note-title" href="?note=welcome">Welcome</a></h2>
             <div class="note-body">
                 <p>Welcome to <a href="?note=about-me">my</a> bite-sized <a href="?note=digital-forest">digital forest</a>, here you can learn about me, find my notes, blogposts and ideas</p>
@@ -460,15 +571,31 @@
         };
 
         const openNotes = new Set(['welcome']);
+        const navigationPath = ['welcome'];
+        const noteDepth = new Map([['welcome', 0]]);
+        let linkPreviewTimeout = null;
+        let currentLinkPreview = null;
 
-        function openNote(noteId) {
+        function openNote(noteId, fromNoteId = null) {
             if (openNotes.has(noteId)) {
-                document.getElementById(`note-${noteId}`).scrollIntoView({ behavior: 'smooth' });
+                const el = document.getElementById(noteId === 'welcome' ? 'welcome' : `note-${noteId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                updateBreadcrumb();
                 return;
             }
 
             const note = notes[noteId];
             if (!note) return;
+
+            // calculate depth
+            const depth = fromNoteId ? (noteDepth.get(fromNoteId) || 0) + 1 : 0;
+            noteDepth.set(noteId, depth);
+
+            // update navigation path
+            if (fromNoteId && navigationPath[navigationPath.length - 1] !== fromNoteId) {
+                navigationPath.push(fromNoteId);
+            }
+            navigationPath.push(noteId);
 
             openNotes.add(noteId);
             // update roots length when a new note is opened
@@ -477,7 +604,7 @@
             });
 
             const noteHTML = `
-                <div class="note" id="note-${noteId}">
+                <div class="note" id="note-${noteId}" data-depth="${depth}">
                             <div class="note-header">
                                 <a class="note-title" href="?note=${noteId}">${note.title}</a>
                                 <a href="javascript:void(0)" class="close-link" onclick="closeNote('${noteId}')">[close]</a>
@@ -498,27 +625,50 @@
 
             document.getElementById('notes-container').insertAdjacentHTML('beforeend', noteHTML);
 
+            // animate in
+            requestAnimationFrame(() => {
+                const el = document.getElementById(`note-${noteId}`);
+                if (el) {
+                    el.classList.add('visible');
+                    setTimeout(() => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 50);
+                }
+            });
+
             // ensure any notes tracked in `openNotes` remain visible (not collapsed)
             setTimeout(() => {
-                // remove collapsed from all open notes (welcome or dynamically added)
                 openNotes.forEach(id => {
                     const el = (id === 'welcome') ? document.getElementById('welcome') : document.getElementById(`note-${id}`);
                     if (el) el.classList.remove('collapsed');
                 });
-                const el = document.getElementById(`note-${noteId}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
             }, 10);
+
+            updateBreadcrumb();
+            setupLinkPreviews();
+            drawConnections();
         }
 
         function closeNote(noteId) {
             const noteElement = document.getElementById(`note-${noteId}`);
             if (noteElement) {
-                noteElement.remove();
-                openNotes.delete(noteId);
-                // update roots when a note is closed
-                requestAnimationFrame(() => {
-                    updateRoots();
-                });
+                noteElement.classList.add('closing');
+                setTimeout(() => {
+                    noteElement.remove();
+                    openNotes.delete(noteId);
+                    noteDepth.delete(noteId);
+                    // remove from navigation path
+                    const index = navigationPath.indexOf(noteId);
+                    if (index > -1) {
+                        navigationPath.splice(index);
+                    }
+                    // update roots when a note is closed
+                    requestAnimationFrame(() => {
+                        updateRoots();
+                    });
+                    updateBreadcrumb();
+                    drawConnections();
+                }, 300);
             }
         }
 
@@ -532,10 +682,12 @@
                     const nid = u.searchParams.get('note');
                     if (nid && nid !== 'welcome' && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
                         e.preventDefault();
-                        if (!openNotes.has(nid)) openNote(nid);
+                        const currentNote = a.closest('.note');
+                        const currentNoteId = currentNote ? (currentNote.id === 'welcome' ? 'welcome' : currentNote.id.replace('note-', '')) : null;
+                        if (!openNotes.has(nid)) openNote(nid, currentNoteId);
                         else {
                             const el = (nid === 'welcome') ? document.getElementById('welcome') : document.getElementById(`note-${nid}`);
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                         return;
                     }
@@ -584,7 +736,9 @@
                                     }
                                 }
                             } else {
-                                if (!openNotes.has(noteId)) openNote(noteId);
+                                const currentNote = noteEl;
+                                const currentNoteId = currentNote ? (currentNote.id === 'welcome' ? 'welcome' : currentNote.id.replace('note-', '')) : null;
+                                if (!openNotes.has(noteId)) openNote(noteId, currentNoteId);
                             }
                         } else {
                             if (noteEl) noteEl.classList.toggle('collapsed');
@@ -627,10 +781,170 @@
                     try { noteId = (new URL(anchor.href)).searchParams.get('note'); } catch (err) { noteId = null; }
                 }
                 if (noteId) {
-                    if (!openNotes.has(noteId)) openNote(noteId);
+                    const currentNote = t.closest('.note');
+                    const currentNoteId = currentNote ? (currentNote.id === 'welcome' ? 'welcome' : currentNote.id.replace('note-', '')) : null;
+                    if (!openNotes.has(noteId)) openNote(noteId, currentNoteId);
                 } else {
                     const noteEl = t.closest('.note');
                     if (noteEl) noteEl.classList.toggle('collapsed');
+                }
+            }
+        });
+
+        // Breadcrumb update
+        function updateBreadcrumb() {
+            const breadcrumbEl = document.getElementById('breadcrumb');
+            if (navigationPath.length <= 1) {
+                breadcrumbEl.classList.remove('visible');
+                return;
+            }
+            
+            breadcrumbEl.classList.add('visible');
+            breadcrumbEl.innerHTML = navigationPath.map((id, index) => {
+                const title = id === 'welcome' ? 'welcome' : (notes[id] ? notes[id].title : id.replace(/-/g, ' '));
+                if (index === navigationPath.length - 1) {
+                    return `<span>${title}</span>`;
+                }
+                return `<a href="?note=${id}">${title}</a><span>›</span>`;
+            }).join('');
+        }
+
+        // Link preview on hover
+        function setupLinkPreviews() {
+            document.querySelectorAll('a[href*="?note="]').forEach(link => {
+                link.addEventListener('mouseenter', function(e) {
+                    clearTimeout(linkPreviewTimeout);
+                    const url = new URL(this.href, window.location.href);
+                    const noteId = url.searchParams.get('note');
+                    if (!noteId || !notes[noteId]) return;
+
+                    const note = notes[noteId];
+                    const preview = document.createElement('div');
+                    preview.className = 'link-preview';
+                    preview.innerHTML = `
+                        <div class="link-preview-title">${note.title}</div>
+                        <div class="link-preview-content">${note.content.substring(0, 120).replace(/<[^>]*>/g, '')}...</div>
+                    `;
+                    document.body.appendChild(preview);
+                    currentLinkPreview = preview;
+
+                    const rect = this.getBoundingClientRect();
+                    preview.style.left = Math.min(rect.left, window.innerWidth - 320) + 'px';
+                    preview.style.top = (rect.bottom + window.scrollY) + 'px';
+
+                    requestAnimationFrame(() => {
+                        preview.classList.add('visible');
+                    });
+                });
+
+                link.addEventListener('mouseleave', function() {
+                    if (currentLinkPreview) {
+                        currentLinkPreview.classList.remove('visible');
+                        linkPreviewTimeout = setTimeout(() => {
+                            if (currentLinkPreview && currentLinkPreview.parentNode) {
+                                currentLinkPreview.parentNode.removeChild(currentLinkPreview);
+                            }
+                            currentLinkPreview = null;
+                        }, 200);
+                    }
+                });
+            });
+        }
+
+        // Draw connection lines between related notes
+        function drawConnections() {
+            // Remove existing connections
+            document.querySelectorAll('.note-connection').forEach(el => el.remove());
+
+            if (openNotes.size < 2) return;
+
+            const noteElements = Array.from(document.querySelectorAll('.note'));
+            const connections = [];
+
+            noteElements.forEach(noteEl => {
+                const noteId = noteEl.id === 'welcome' ? 'welcome' : noteEl.id.replace('note-', '');
+                const note = notes[noteId];
+                if (!note || !note.backlinks) return;
+
+                note.backlinks.forEach(backlinkId => {
+                    if (openNotes.has(backlinkId)) {
+                        const targetEl = backlinkId === 'welcome' 
+                            ? document.getElementById('welcome')
+                            : document.getElementById(`note-${backlinkId}`);
+                        if (targetEl && noteEl !== targetEl) {
+                            connections.push({ from: noteEl, to: targetEl });
+                        }
+                    }
+                });
+            });
+
+            if (connections.length === 0) return;
+
+            // Create SVG overlay for connections
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.className = 'note-connection';
+            svg.style.position = 'fixed';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.pointerEvents = 'none';
+            document.body.appendChild(svg);
+
+            connections.forEach(({ from, to }) => {
+                const fromRect = from.getBoundingClientRect();
+                const toRect = to.getBoundingClientRect();
+                
+                const fromX = fromRect.left + fromRect.width / 2;
+                const fromY = fromRect.top + fromRect.height;
+                const toX = toRect.left + toRect.width / 2;
+                const toY = toRect.top;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const midY = (fromY + toY) / 2;
+                path.setAttribute('d', `M ${fromX} ${fromY} Q ${fromX} ${midY}, ${toX} ${midY} T ${toX} ${toY}`);
+                svg.appendChild(path);
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Escape to close last opened note
+            if (e.key === 'Escape' && !e.target.matches('input, textarea')) {
+                if (navigationPath.length > 1) {
+                    const lastNote = navigationPath[navigationPath.length - 1];
+                    if (lastNote !== 'welcome') {
+                        closeNote(lastNote);
+                    }
+                }
+            }
+
+            // Arrow keys for navigation (when not in input)
+            if (!e.target.matches('input, textarea, a')) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const noteElements = Array.from(document.querySelectorAll('.note.visible'));
+                    if (noteElements.length === 0) return;
+
+                    const currentScroll = window.scrollY + window.innerHeight / 2;
+                    let targetIndex = -1;
+
+                    for (let i = 0; i < noteElements.length; i++) {
+                        const rect = noteElements[i].getBoundingClientRect();
+                        const noteTop = rect.top + window.scrollY;
+                        if (e.key === 'ArrowDown' && noteTop > currentScroll) {
+                            targetIndex = i;
+                            break;
+                        } else if (e.key === 'ArrowUp' && noteTop < currentScroll) {
+                            targetIndex = i;
+                        }
+                    }
+
+                    if (targetIndex === -1) {
+                        targetIndex = e.key === 'ArrowDown' ? 0 : noteElements.length - 1;
+                    }
+
+                    noteElements[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         });
@@ -639,12 +953,21 @@
         function openNoteFromURL() {
             const params = new URLSearchParams(window.location.search);
             const note = params.get('note');
-            if (!note) return;
+            if (!note) {
+                // Make welcome note visible
+                const welcomeEl = document.getElementById('welcome');
+                if (welcomeEl) {
+                    welcomeEl.classList.add('visible');
+                }
+                updateBreadcrumb();
+                setupLinkPreviews();
+                return;
+            }
             if (!openNotes.has(note)) {
                 openNote(note);
             } else {
                 const el = document.getElementById(note === 'welcome' ? 'welcome' : `note-${note}`);
-                if (el) el.scrollIntoView();
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 
@@ -712,7 +1035,22 @@
         const treeImg = document.getElementById('leafless-tree');
         if (treeImg) treeImg.addEventListener('load', updateRoots);
 
-        window.addEventListener('load', function() { openNoteFromURL(); updateRoots(); });
+        window.addEventListener('load', function() { 
+            openNoteFromURL(); 
+            updateRoots();
+            setupLinkPreviews();
+        });
+
+        // Update connections on scroll/resize
+        let connectionUpdateTimeout;
+        window.addEventListener('scroll', function() {
+            clearTimeout(connectionUpdateTimeout);
+            connectionUpdateTimeout = setTimeout(drawConnections, 100);
+        });
+        window.addEventListener('resize', function() {
+            clearTimeout(connectionUpdateTimeout);
+            connectionUpdateTimeout = setTimeout(drawConnections, 100);
+        });
     </script>
 </body>
 </html>
