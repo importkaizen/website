@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>apostle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="pyramid%20.png">
+    <link rel="apple-touch-icon" href="pyramid%20.png">
+    <style>
+
+#welcome > h2 {
+            font-weight: 700;
+            text-shadow: 0.4px 0 currentColor, -0.4px 0 currentColor;
+            letter-spacing: 0.06em;
+            margin: 30px 0 28px 0em;
+        }
+        body {
+            font-family: 'Cormorant Garamond', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, serif;
+            line-height: 1.2;
+            font-size: 20px;
+            background: #4d362b;
+            color: #fff;
+            padding: 40px 20px 40px 275px;
+            max-width: 900px;
+        }
+
+        h1 {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin: 0;
+            z-index: 999;
+            background: transparent;
+            padding: 4px 6px;
+        }
+
+        /* general headings alignment */
+        h2 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin: 20px 0 10px 0.5em;
+            cursor: pointer;
+
+        }
+
+        h3 {
+            font-size: 1em;
+            font-weight: 600;
+            margin: 20px 0 10px 0.5em;
+
+
+        }
+
+        p {
+            margin-left: 1em;
+            text-align: justify;
+            text-justify: inter-word;
+            -webkit-hyphens: auto;
+            -ms-hyphens: auto;
+            hyphens: auto;
+            text-align-last: left;
+        }
+
+        a {
+            color: #fff;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        a:hover {
+            color: #ddd;
+        }
+
+
+        .note {
+            margin: 30px 0;
+            padding: 30px 0;
+            border-top: 1px solid #fff;
+            max-width: 48ch;
+        }
+
+        .note.collapsed .note-body {
+            display: none;
+        }
+
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .note-title {
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        /* remove underline for the top welcome link specifically */
+        #welcome > h2 > a.note-title {
+            text-decoration: none;
+        }
+
+        .close-link {
+            color: #ddd;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+
+        .close-link:hover {
+            color: #fff;
+        }
+
+        .backlinks {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #fff;
+        }
+
+        .backlinks > .backlinks-title,
+        .backlinks > a {
+            display: none;
+        }
+
+        .backlinks-title {
+            font-size: 0.9em;
+            color: #ddd;
+            margin-bottom: 8px;
+        }
+
+        .backlinks a {
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+
+        ul {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        p {
+            margin: 12px 0;
+            text-align: justify;
+            text-justify: inter-word;
+            -webkit-hyphens: auto;
+            -ms-hyphens: auto;
+            hyphens: auto;
+            text-align-last: left;
+        }
+
+        /* ensure dynamic note content is justified */
+        .note-content, .note-content p, .note-content li {
+            text-align: justify;
+            text-justify: inter-word;
+            -webkit-hyphens: auto;
+            -ms-hyphens: auto;
+            hyphens: auto;
+            text-align-last: left;
+        }
+
+        .icon {
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        #welcome {
+            border-top: none;
+        }
+        /* right-side decorative image and dynamic roots reveal */
+        #leafless-tree-wrap {
+            position: fixed;
+            right: 275px; /* match the left content padding distance */
+            top: 35%;
+            transform: translateY(-50%);
+            max-width: 480px; /* allow a larger image */
+            width: 24vw;
+            height: auto; /* show full tree */
+            z-index: 900;
+            pointer-events: none;
+            overflow: visible;
+            background: transparent;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        #leafless-tree {
+            display: block;
+            width: 100%;
+            height: auto;
+            pointer-events: none;
+            user-select: none;
+            opacity: 1;
+            transition: opacity 0.7s cubic-bezier(.4,0,.2,1);
+            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><path id="burnmask" d="M0,0 Q200,40 400,0 V600 H0 Z" fill="white"/></svg>');
+            mask-size: cover;
+            mask-repeat: no-repeat;
+        }
+
+        #leafless-tree.burned {
+            opacity: 0;
+            transition: opacity 0.7s cubic-bezier(.7,0,.2,1);
+        }
+
+        /* a roots layer that scales up from the bottom as notes open */
+        #tree-roots {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -2px; /* sit just below the image */
+            width: 90%;
+            pointer-events: none;
+            z-index: 899;
+            overflow: visible;
+        }
+
+        #tree-roots svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            overflow: visible;
+        }
+
+        /* root fills removed - using thin strokes only */
+
+        /* each branch will scale up from its bottom anchor */
+        .root-branch {
+            opacity: 0.0;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            stroke: #1a1a1a;
+            stroke-width: 1.8;
+            transition: opacity 260ms ease;
+        }
+
+        /* when a branch has 'revealed', we'll animate its stroke-dashoffset via JS */
+        .root-branch.revealed {
+            opacity: 1;
+        }
+
+        @media (max-width: 900px) {
+            #leafless-tree-wrap { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <h1><a href="javascript:void(0)">apostle</a></h1>
+    <div id="leafless-tree-wrap">
+        <img id="leafless-tree" src="leaflessTree.jpg" alt="leafless tree" onerror="this.style.display='none'">
+        <div id="tree-roots" aria-hidden="true">
+            <!-- multiple root branches; they will be revealed progressively -->
+            <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMax meet">
+                <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- thin black root branches growing from base -->
+                        <path class="root-branch" d="M8 20 C28 48, 38 70, 48 104" />
+                        <path class="root-branch" d="M28 14 C48 44, 60 66, 74 102" />
+                        <path class="root-branch" d="M48 18 C68 46, 86 74, 98 110" />
+                        <path class="root-branch" d="M68 12 C88 42, 106 72, 120 110" />
+                        <path class="root-branch" d="M92 10 C112 38, 134 68, 148 108" />
+                        <path class="root-branch" d="M116 14 C136 44, 156 74, 172 112" />
+                        <path class="root-branch" d="M140 16 C160 46, 182 76, 198 116" />
+                        <path class="root-branch" d="M164 12 C184 44, 204 76, 222 118" />
+                        <path class="root-branch" d="M188 18 C208 52, 228 84, 252 124" />
+                        <path class="root-branch" d="M212 22 C232 56, 252 86, 276 128" />
+                        <path class="root-branch" d="M236 26 C256 60, 276 92, 300 132" />
+                        <path class="root-branch" d="M16 6 C36 30, 56 54, 80 94" />
+                        <path class="root-branch" d="M40 2 C60 26, 84 54, 110 96" />
+                        <path class="root-branch" d="M64 4 C84 30, 108 60, 136 100" />
+                        <path class="root-branch" d="M88 0 C108 30, 132 64, 164 104" />
+                        <path class="root-branch" d="M112 8 C132 36, 156 72, 192 116" />
+                        <path class="root-branch" d="M136 6 C156 36, 182 76, 216 118" />
+                        <path class="root-branch" d="M160 4 C180 34, 208 74, 248 120" />
+                        <path class="root-branch" d="M184 8 C204 40, 236 80, 284 128" />
+                        <path class="root-branch" d="M208 12 C228 44, 260 86, 308 132" />
+                    </g>
+            </svg>
+        </div>
+    </div>
+    <div id="notes-container">
+        <div class="note" id="welcome">
+            <h2><a class="note-title" href="?note=welcome">Welcome</a></h2>
+            <div class="note-body">
+                <p>Welcome to <a href="?note=about-me">my</a> bite-sized <a href="?note=digital-forest">digital forest</a>, here you can learn about me, find my notes, blogposts and ideas</p>
+
+                <p>Internal links go to other forest pages, they will open under the current node, so you can navigate the forest without having to keep different tabs open (you can do that as well if you want by using middle click). If you are seeing this under a browser that doesn't support javascript links will work as normal and you will navigate to each note individually.</p>
+
+                <p>If you wanna remove a note from your view, you can click on [close]. (This Welcome note is the only one you can't close, to make sure you can always navigate somewhere). Notes are collapsible if you click on the titles.</p>
+
+                <p>From here you can start exploring the forest, the forest has no search and no direct access to pages. This is a bit of an experiment to encourage exploring around. Everything has to be accessible through other pages.</p>
+
+                <p>Currently (2025/12/25) doing <a href="?note=december-adventure">december adventure</a>.</p>
+
+                <p>Here are some starting points to get you into the forest:</p>
+
+                <ul>
+                    <li><a href="?note=programming">programming</a></li>
+                    <li><a href="?note=blog-posts">blog posts</a></li>
+                    <li><a href="?note=projects">projects</a></li>
+                    <li><a href="?note=interests">interests</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const notes = {
+            'about-me': {
+                title: 'about me',
+                content: `
+                    <p>My name is [Your Name], I'm a [your role] from [Your Location].</p>
+                    
+                    <p>Currently working at [Company/Project].</p>
+                    
+                    <p>You can read a bit about my <a href="?note=programming">programming</a> background.</p>
+                    
+                    <p>You can reach me at [your email] if you want me to expand on a topic.</p>
+                `,
+                backlinks: ['welcome', 'programming', 'projects']
+            },
+            'digital-forest': {
+                title: 'digital forest',
+                content: `
+                    <p>A digital forest is a metaphor for a personal knowledge space - an interconnected collection of notes, thoughts, and ideas that grow organically over time.</p>
+                    
+                    <p>Unlike a traditional blog or portfolio, a digital forest encourages exploration and discovery. There's no chronological order or rigid structure, just paths between related concepts.</p>
+                    
+                    <p>The idea is inspired by the concept of a <a href="?note=digital-garden">digital garden</a> - a space where ideas are cultivated rather than published.</p>
+                `,
+                backlinks: ['welcome']
+            },
+            'digital-garden': {
+                title: 'digital garden',
+                content: `
+                    <p>Digital gardens are a different way of thinking about online content. Rather than a stream of posts in reverse chronological order, it's a network of interconnected notes that evolve over time.</p>
+                    
+                    <p>Key principles:</p>
+                    <ul>
+                        <li>Work with the garage door up - share imperfect, evolving thoughts</li>
+                        <li>Connect ideas through links rather than categories</li>
+                        <li>Tend and revise notes over time</li>
+                        <li>Encourage exploration over consumption</li>
+                    </ul>
+                `,
+                backlinks: ['digital-forest']
+            },
+            'programming': {
+                title: 'programming',
+                content: `
+                    <p>I work primarily with [your main languages/technologies].</p>
+                    
+                    <h3>Current interests</h3>
+                    <ul>
+                        <li>[Technology/concept 1]</li>
+                        <li>[Technology/concept 2]</li>
+                        <li>[Technology/concept 3]</li>
+                    </ul>
+                    
+                    <p>You can see some of my work in <a href="?note=projects">projects</a>.</p>
+                `,
+                backlinks: ['welcome', 'about-me', 'projects']
+            },
+            'projects': {
+                title: 'projects',
+                content: `
+                    <h3>Active Projects</h3>
+                    
+                    <p><strong>Project Name 1</strong> - Brief description of what this project does and why it's interesting.</p>
+                    
+                    <p><strong>Project Name 2</strong> - Another project with its purpose and current status.</p>
+                    
+                    <h3>Past Work</h3>
+                    
+                    <p><strong>Completed Project</strong> - What you learned and accomplished.</p>
+                `,
+                backlinks: ['welcome', 'programming']
+            },
+            'blog-posts': {
+                title: 'blog posts',
+                content: `
+                    <p>Thoughts and explorations, in roughly reverse chronological order:</p>
+                    
+                    <ul>
+                        <li><a href="?note=post-1">Post Title 1</a> - Brief description</li>
+                        <li><a href="?note=post-2">Post Title 2</a> - Brief description</li>
+                        <li><a href="?note=post-3">Post Title 3</a> - Brief description</li>
+                    </ul>
+                `,
+                backlinks: ['welcome']
+            },
+            'interests': {
+                title: 'interests',
+                content: `
+                    <p>Beyond <a href="?note=programming">programming</a>, I'm interested in:</p>
+                    
+                    <ul>
+                        <li>[Interest 1]</li>
+                        <li>[Interest 2]</li>
+                        <li>[Interest 3]</li>
+                    </ul>
+                    
+                    <p>These often influence my approach to <a href="?note=projects">projects</a>.</p>
+                `,
+                backlinks: ['welcome']
+            },
+            'december-adventure': {
+                title: 'december adventure',
+                content: `
+                    <p>December Adventure is a casual, low-pressure alternative to Advent of Code. Instead of daily coding challenges, you spend December working on whatever you want - learning something new, building a project, or just experimenting.</p>
+                    
+                    <p>The only rule: share something about what you did each day.</p>
+                    
+                    <p>My December Adventure progress:</p>
+                    <ul>
+                        <li>Day 1-22: Haven't heard of it</li>
+                        <li>Day 23: Started this website</li>
+                        <li>Day 24: Worked more on this website</li>
+                        <li>Day 25: Worked more on this website</li>
+                        
+                    </ul>
+                `,
+                backlinks: ['welcome']
+            },
+            'post-1': {
+                title: 'Example Post Title',
+                content: `
+                    <p><em>2024-12-15</em></p>
+                    
+                    <p>This is where your blog post content would go. Write about what you're learning, building, or thinking about.</p>
+                    
+                    <h3>Main Point</h3>
+                    <p>Develop your thoughts with examples and explanations.</p>
+                `,
+                backlinks: ['blog-posts']
+            },
+            'post-2': {
+                title: 'Another Post',
+                content: `
+                    <p><em>2024-11-20</em></p>
+                    
+                    <p>More thoughts and ideas here.</p>
+                `,
+                backlinks: ['blog-posts']
+            },
+            'post-3': {
+                title: 'Third Post',
+                content: `
+                    <p><em>2024-10-10</em></p>
+                    
+                    <p>Share your process and discoveries.</p>
+                `,
+                backlinks: ['blog-posts']
+            }
+        };
+
+        const openNotes = new Set(['welcome']);
+
+        function openNote(noteId) {
+            if (openNotes.has(noteId)) {
+                document.getElementById(`note-${noteId}`).scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            const note = notes[noteId];
+            if (!note) return;
+
+            openNotes.add(noteId);
+            // update roots length when a new note is opened
+            requestAnimationFrame(() => {
+                updateRoots();
+            });
+
+            const noteHTML = `
+                <div class="note" id="note-${noteId}">
+                            <div class="note-header">
+                                <a class="note-title" href="?note=${noteId}">${note.title}</a>
+                                <a href="javascript:void(0)" class="close-link" onclick="closeNote('${noteId}')">[close]</a>
+                            </div>
+                            <div class="note-body">
+                                <div class="note-content">
+                                    ${note.content}
+                                </div>
+                                ${note.backlinks ? `
+                                    <div class="backlinks">
+                                        <div class="backlinks-title">backlinks</div>
+                                        ${note.backlinks.map(link => `<a href="?note=${link}">${link.replace(/-/g, ' ')}</a>`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                </div>
+            `;
+
+            document.getElementById('notes-container').insertAdjacentHTML('beforeend', noteHTML);
+
+            // ensure any notes tracked in `openNotes` remain visible (not collapsed)
+            setTimeout(() => {
+                // remove collapsed from all open notes (welcome or dynamically added)
+                openNotes.forEach(id => {
+                    const el = (id === 'welcome') ? document.getElementById('welcome') : document.getElementById(`note-${id}`);
+                    if (el) el.classList.remove('collapsed');
+                });
+                const el = document.getElementById(`note-${noteId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 10);
+        }
+
+        function closeNote(noteId) {
+            const noteElement = document.getElementById(`note-${noteId}`);
+            if (noteElement) {
+                noteElement.remove();
+                openNotes.delete(noteId);
+                // update roots when a note is closed
+                requestAnimationFrame(() => {
+                    updateRoots();
+                });
+            }
+        }
+
+        // Global click handler (capture): intercept clicks on links with ?note=
+        // to open notes via JS and prevent full-page navigation on left-click.
+        document.addEventListener('click', function(e) {
+            const a = e.target && e.target.closest && e.target.closest('a');
+            if (a) {
+                try {
+                    const u = new URL(a.href, window.location.href);
+                    const nid = u.searchParams.get('note');
+                    if (nid && nid !== 'welcome' && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!openNotes.has(nid)) openNote(nid);
+                        else {
+                            const el = (nid === 'welcome') ? document.getElementById('welcome') : document.getElementById(`note-${nid}`);
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }
+                        return;
+                    }
+                } catch (err) {
+                    // ignore
+                }
+            }
+        }, true);
+
+        // Delegated handler: handle clicks for anchors (allow middle-click/new-tab),
+        // and left-click/keyboard for toggling collapse.
+        document.getElementById('notes-container').addEventListener('click', function(e) {
+            const t = e.target;
+
+            // If clicking a title link (anchor), allow middle-click / modifier-click to open in new tab.
+            const titleLink = t.closest && t.closest('a.note-title, h2 a');
+            if (titleLink) {
+                const noteEl = titleLink.closest('.note');
+                // extract note id from href param if present
+                let noteId = null;
+                try {
+                    const url = new URL(titleLink.href);
+                    noteId = url.searchParams.get('note');
+                } catch (err) {
+                    // ignore
+                }
+
+                    // Left click without modifiers: prevent navigation.
+                    // If the link points to a note (has a ?note= param) open that note
+                    // but do NOT collapse the source note. Only toggle collapse for
+                    // non-link headings handled elsewhere.
+                    if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                        e.preventDefault();
+                        if (noteId) {
+                            if (noteId === 'welcome') {
+                                if (noteEl) {
+                                    noteEl.classList.toggle('collapsed');
+                                    // Animate tree burn/regrow
+                                    const tree = document.getElementById('leafless-tree');
+                                    if (tree) {
+                                        if (noteEl.classList.contains('collapsed')) {
+                                            tree.classList.add('burned');
+                                        } else {
+                                            tree.classList.remove('burned');
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (!openNotes.has(noteId)) openNote(noteId);
+                            }
+                        } else {
+                            if (noteEl) noteEl.classList.toggle('collapsed');
+                        }
+                    }
+                // otherwise let the browser handle middle-click / open-in-new-tab
+                return;
+            }
+
+            // legacy: clicking on h2 (non-anchor) or other .note-title elements toggles collapse
+            if (t.matches && (t.matches('h2') || t.matches('.note-title'))) {
+                // If the clicked element (or its closest anchor) points to a ?note= param,
+                // we should not toggle collapse here (that click is handled above).
+                const possibleLink = t.closest && t.closest('a');
+                let linkTargetsNote = false;
+                if (possibleLink) {
+                    try {
+                        const u = new URL(possibleLink.href);
+                        linkTargetsNote = !!u.searchParams.get('note');
+                    } catch (err) {
+                        linkTargetsNote = false;
+                    }
+                }
+                if (!linkTargetsNote) {
+                    const noteEl = t.closest('.note');
+                    if (noteEl) noteEl.classList.toggle('collapsed');
+                }
+            }
+        });
+
+        document.getElementById('notes-container').addEventListener('keydown', function(e) {
+            const t = e.target;
+            if ((t.matches && (t.matches('h2') || t.matches('.note-title') || t.matches('a.note-title'))) && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                // For keyboard activation, if this element is an anchor with a ?note parameter,
+                // open the referenced note instead of toggling collapse.
+                const anchor = t.closest && t.closest('a');
+                let noteId = null;
+                if (anchor) {
+                    try { noteId = (new URL(anchor.href)).searchParams.get('note'); } catch (err) { noteId = null; }
+                }
+                if (noteId) {
+                    if (!openNotes.has(noteId)) openNote(noteId);
+                } else {
+                    const noteEl = t.closest('.note');
+                    if (noteEl) noteEl.classList.toggle('collapsed');
+                }
+            }
+        });
+
+        // On page load, open note from URL param (so opening ?note=id in a new tab shows it)
+        function openNoteFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const note = params.get('note');
+            if (!note) return;
+            if (!openNotes.has(note)) {
+                openNote(note);
+            } else {
+                const el = document.getElementById(note === 'welcome' ? 'welcome' : `note-${note}`);
+                if (el) el.scrollIntoView();
+            }
+        }
+
+        // reveal roots by progressively drawing individual branches (stroke animation)
+        function updateRoots() {
+            const branches = Array.from(document.querySelectorAll('#tree-roots .root-branch'));
+            if (!branches.length) return;
+
+            // configurable parameters for growth
+            const opened = Math.max(0, openNotes.size - 1); // exclude welcome
+            const branchesPerNode = 3; // more branches per opened note for fuller growth
+            const totalToReveal = Math.min(branches.length, opened * branchesPerNode);
+            const baseDuration = 850; // ms per branch draw
+            const stagger = 60; // ms between branch reveals
+
+            // Find the first branch that hasn't been revealed yet
+            let firstUnrevealedIndex = branches.findIndex(b => !b.classList.contains('revealed'));
+            if (firstUnrevealedIndex < 0) firstUnrevealedIndex = totalToReveal;
+
+            branches.forEach((b, i) => {
+                // initialize stroke-dash values once
+                if (!b.dataset.inited) {
+                    try {
+                        const len = Math.ceil(b.getTotalLength());
+                        b.style.strokeDasharray = len + ' ' + len;
+                        b.style.strokeDashoffset = len;
+                        b.style.transition = `stroke-dashoffset ${baseDuration}ms cubic-bezier(.2,.9,.2,1), opacity 260ms ease`;
+                        b.dataset.len = len;
+                        b.dataset.inited = '1';
+                    } catch (err) {
+                        b.dataset.inited = '1';
+                    }
+                }
+
+                const shouldReveal = i < totalToReveal;
+                const isRevealed = b.classList.contains('revealed');
+                
+                if (shouldReveal && !isRevealed) {
+                    // Calculate stagger delay relative to the first unrevealed branch
+                    const delayIndex = i - firstUnrevealedIndex;
+                    // stagger reveals for nicer effect
+                    setTimeout(() => {
+                        // Double-check the branch still needs to be revealed
+                        if (i < Math.min(branches.length, Math.max(0, openNotes.size - 1) * branchesPerNode)) {
+                            b.classList.add('revealed');
+                            // animate stroke drawing
+                            requestAnimationFrame(() => {
+                                b.style.strokeDashoffset = '0';
+                            });
+                        }
+                    }, Math.max(0, delayIndex) * stagger);
+                } else if (!shouldReveal && isRevealed) {
+                    // hide it again (reverse the animation)
+                    const len = b.dataset.len || 0;
+                    b.classList.remove('revealed');
+                    // animate dashoffset back to full length
+                    requestAnimationFrame(() => {
+                        b.style.strokeDashoffset = len;
+                    });
+                }
+            });
+        }
+
+        // ensure update after image loads (in case it's slow)
+        const treeImg = document.getElementById('leafless-tree');
+        if (treeImg) treeImg.addEventListener('load', updateRoots);
+
+        window.addEventListener('load', function() { openNoteFromURL(); updateRoots(); });
+    </script>
+</body>
+</html>
