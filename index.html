@@ -591,9 +591,20 @@
             const depth = fromNoteId ? (noteDepth.get(fromNoteId) || 0) + 1 : 0;
             noteDepth.set(noteId, depth);
 
-            // update navigation path
+            // update navigation path - only add if not already there
             if (fromNoteId && navigationPath[navigationPath.length - 1] !== fromNoteId) {
-                navigationPath.push(fromNoteId);
+                // Remove any existing instances of fromNoteId to avoid duplicates
+                const fromIndex = navigationPath.lastIndexOf(fromNoteId);
+                if (fromIndex > -1) {
+                    navigationPath.splice(fromIndex + 1);
+                } else {
+                    navigationPath.push(fromNoteId);
+                }
+            }
+            // Remove noteId if it's already in the path (to avoid duplicates)
+            const existingIndex = navigationPath.indexOf(noteId);
+            if (existingIndex > -1) {
+                navigationPath.splice(existingIndex);
             }
             navigationPath.push(noteId);
 
@@ -646,7 +657,8 @@
 
             updateBreadcrumb();
             setupLinkPreviews();
-            drawConnections();
+            // Delay connection drawing to avoid layout issues
+            setTimeout(drawConnections, 100);
         }
 
         function closeNote(noteId) {
@@ -657,10 +669,19 @@
                     noteElement.remove();
                     openNotes.delete(noteId);
                     noteDepth.delete(noteId);
-                    // remove from navigation path
+                    // remove from navigation path (but keep welcome)
                     const index = navigationPath.indexOf(noteId);
-                    if (index > -1) {
-                        navigationPath.splice(index);
+                    if (index > -1 && index > 0) {
+                        navigationPath.splice(index, 1);
+                        // Ensure we don't have duplicates
+                        const lastIndex = navigationPath.lastIndexOf(noteId);
+                        if (lastIndex > -1) {
+                            navigationPath.splice(lastIndex, 1);
+                        }
+                    }
+                    // Ensure welcome is always first
+                    if (navigationPath[0] !== 'welcome') {
+                        navigationPath.unshift('welcome');
                     }
                     // update roots when a note is closed
                     requestAnimationFrame(() => {
@@ -794,15 +815,20 @@
         // Breadcrumb update
         function updateBreadcrumb() {
             const breadcrumbEl = document.getElementById('breadcrumb');
-            if (navigationPath.length <= 1) {
+            if (!breadcrumbEl) return;
+            
+            // Filter out invalid note IDs
+            const validPath = navigationPath.filter(id => id === 'welcome' || notes[id]);
+            
+            if (validPath.length <= 1) {
                 breadcrumbEl.classList.remove('visible');
                 return;
             }
             
             breadcrumbEl.classList.add('visible');
-            breadcrumbEl.innerHTML = navigationPath.map((id, index) => {
+            breadcrumbEl.innerHTML = validPath.map((id, index) => {
                 const title = id === 'welcome' ? 'welcome' : (notes[id] ? notes[id].title : id.replace(/-/g, ' '));
-                if (index === navigationPath.length - 1) {
+                if (index === validPath.length - 1) {
                     return `<span>${title}</span>`;
                 }
                 return `<a href="?note=${id}">${title}</a><span>›</span>`;
@@ -810,8 +836,12 @@
         }
 
         // Link preview on hover
+        const linkPreviewHandlers = new WeakSet();
         function setupLinkPreviews() {
             document.querySelectorAll('a[href*="?note="]').forEach(link => {
+                if (linkPreviewHandlers.has(link)) return;
+                linkPreviewHandlers.add(link);
+                
                 link.addEventListener('mouseenter', function(e) {
                     clearTimeout(linkPreviewTimeout);
                     const url = new URL(this.href, window.location.href);
@@ -858,7 +888,9 @@
 
             if (openNotes.size < 2) return;
 
-            const noteElements = Array.from(document.querySelectorAll('.note'));
+            const noteElements = Array.from(document.querySelectorAll('.note.visible'));
+            if (noteElements.length < 2) return;
+            
             const connections = [];
 
             noteElements.forEach(noteEl => {
@@ -871,8 +903,15 @@
                         const targetEl = backlinkId === 'welcome' 
                             ? document.getElementById('welcome')
                             : document.getElementById(`note-${backlinkId}`);
-                        if (targetEl && noteEl !== targetEl) {
-                            connections.push({ from: noteEl, to: targetEl });
+                        if (targetEl && noteEl !== targetEl && targetEl.classList.contains('visible')) {
+                            // Only connect if both are visible and different
+                            const existing = connections.find(c => 
+                                (c.from === noteEl && c.to === targetEl) || 
+                                (c.from === targetEl && c.to === noteEl)
+                            );
+                            if (!existing) {
+                                connections.push({ from: noteEl, to: targetEl });
+                            }
                         }
                     }
                 });
@@ -889,21 +928,29 @@
             svg.style.width = '100%';
             svg.style.height = '100%';
             svg.style.pointerEvents = 'none';
+            svg.style.zIndex = '1';
             document.body.appendChild(svg);
 
             connections.forEach(({ from, to }) => {
-                const fromRect = from.getBoundingClientRect();
-                const toRect = to.getBoundingClientRect();
-                
-                const fromX = fromRect.left + fromRect.width / 2;
-                const fromY = fromRect.top + fromRect.height;
-                const toX = toRect.left + toRect.width / 2;
-                const toY = toRect.top;
+                try {
+                    const fromRect = from.getBoundingClientRect();
+                    const toRect = to.getBoundingClientRect();
+                    
+                    // Only draw if both elements are in viewport
+                    if (fromRect.height === 0 || toRect.height === 0) return;
+                    
+                    const fromX = fromRect.left + fromRect.width / 2;
+                    const fromY = fromRect.top + fromRect.height;
+                    const toX = toRect.left + toRect.width / 2;
+                    const toY = toRect.top;
 
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                const midY = (fromY + toY) / 2;
-                path.setAttribute('d', `M ${fromX} ${fromY} Q ${fromX} ${midY}, ${toX} ${midY} T ${toX} ${toY}`);
-                svg.appendChild(path);
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const midY = (fromY + toY) / 2;
+                    path.setAttribute('d', `M ${fromX} ${fromY} Q ${fromX} ${midY}, ${toX} ${midY} T ${toX} ${toY}`);
+                    svg.appendChild(path);
+                } catch (err) {
+                    // Skip if there's an error
+                }
             });
         }
 
@@ -1041,16 +1088,14 @@
             setupLinkPreviews();
         });
 
-        // Update connections on scroll/resize
+        // Update connections on scroll/resize (throttled)
         let connectionUpdateTimeout;
-        window.addEventListener('scroll', function() {
+        function scheduleConnectionUpdate() {
             clearTimeout(connectionUpdateTimeout);
-            connectionUpdateTimeout = setTimeout(drawConnections, 100);
-        });
-        window.addEventListener('resize', function() {
-            clearTimeout(connectionUpdateTimeout);
-            connectionUpdateTimeout = setTimeout(drawConnections, 100);
-        });
+            connectionUpdateTimeout = setTimeout(drawConnections, 200);
+        }
+        window.addEventListener('scroll', scheduleConnectionUpdate, { passive: true });
+        window.addEventListener('resize', scheduleConnectionUpdate);
     </script>
 </body>
 </html>
