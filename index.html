@@ -268,42 +268,6 @@
             transition: opacity 0.7s cubic-bezier(.7,0,.2,1);
         }
 
-        /* a roots layer that scales up from the bottom as notes open */
-        #tree-roots {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 0; /* align with tree base */
-            width: 90%;
-            height: 140px; /* match viewBox height */
-            pointer-events: none;
-            z-index: 899;
-            overflow: visible;
-        }
-
-        #tree-roots svg {
-            width: 100%;
-            height: auto;
-            display: block;
-            overflow: visible;
-        }
-
-        /* root fills removed - using thin strokes only */
-
-        /* each branch will scale up from its bottom anchor */
-        .root-branch {
-            opacity: 0.0;
-            stroke-linejoin: round;
-            stroke-linecap: round;
-            stroke: #1a1a1a;
-            stroke-width: 1.8;
-            transition: opacity 260ms ease;
-        }
-
-        /* when a branch has 'revealed', we'll animate its stroke-dashoffset via JS */
-        .root-branch.revealed {
-            opacity: 1;
-        }
 
         /* breadcrumb trail */
         #breadcrumb {
@@ -336,16 +300,6 @@
             color: #999;
         }
 
-        /* connection lines between notes */
-        .note-connection {
-            position: absolute;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.08;
-            stroke: #fff;
-            stroke-width: 1;
-            fill: none;
-        }
 
         /* smooth transitions for note closing */
         .note.closing {
@@ -365,34 +319,6 @@
     <div id="breadcrumb"></div>
     <div id="leafless-tree-wrap">
         <img id="leafless-tree" src="leaflessTree.jpg" alt="leafless tree" onerror="this.style.display='none'">
-        <div id="tree-roots" aria-hidden="true">
-            <!-- multiple root branches; they will be revealed progressively -->
-            <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMax meet">
-                <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <!-- thin black root branches growing from base (flipped: start at Y=140, grow downward) -->
-                        <path class="root-branch" d="M8 120 C28 92, 38 70, 48 36" />
-                        <path class="root-branch" d="M28 126 C48 96, 60 74, 74 38" />
-                        <path class="root-branch" d="M48 122 C68 94, 86 66, 98 30" />
-                        <path class="root-branch" d="M68 128 C88 98, 106 68, 120 30" />
-                        <path class="root-branch" d="M92 130 C112 102, 134 72, 148 32" />
-                        <path class="root-branch" d="M116 126 C136 96, 156 66, 172 28" />
-                        <path class="root-branch" d="M140 124 C160 94, 182 64, 198 24" />
-                        <path class="root-branch" d="M164 128 C184 96, 204 64, 222 22" />
-                        <path class="root-branch" d="M188 122 C208 88, 228 56, 252 16" />
-                        <path class="root-branch" d="M212 118 C232 84, 252 54, 276 12" />
-                        <path class="root-branch" d="M236 114 C256 80, 276 48, 300 8" />
-                        <path class="root-branch" d="M16 134 C36 110, 56 86, 80 46" />
-                        <path class="root-branch" d="M40 138 C60 114, 84 86, 110 44" />
-                        <path class="root-branch" d="M64 136 C84 110, 108 80, 136 40" />
-                        <path class="root-branch" d="M88 140 C108 110, 132 76, 164 36" />
-                        <path class="root-branch" d="M112 132 C132 104, 156 68, 192 24" />
-                        <path class="root-branch" d="M136 134 C156 104, 182 64, 216 22" />
-                        <path class="root-branch" d="M160 136 C180 106, 208 66, 248 20" />
-                        <path class="root-branch" d="M184 132 C204 100, 236 60, 284 12" />
-                        <path class="root-branch" d="M208 128 C228 96, 260 54, 308 8" />
-                    </g>
-            </svg>
-        </div>
     </div>
     <div id="notes-container">
         <div class="note visible" id="welcome" data-depth="0">
@@ -609,10 +535,6 @@
             navigationPath.push(noteId);
 
             openNotes.add(noteId);
-            // update roots length when a new note is opened
-            requestAnimationFrame(() => {
-                updateRoots();
-            });
 
             const noteHTML = `
                 <div class="note" id="note-${noteId}" data-depth="${depth}">
@@ -657,8 +579,6 @@
 
             updateBreadcrumb();
             setupLinkPreviews();
-            // Delay connection drawing to avoid layout issues
-            setTimeout(drawConnections, 100);
         }
 
         function closeNote(noteId) {
@@ -683,10 +603,6 @@
                     if (navigationPath[0] !== 'welcome') {
                         navigationPath.unshift('welcome');
                     }
-                    // update roots when a note is closed
-                    requestAnimationFrame(() => {
-                        updateRoots();
-                    });
                     updateBreadcrumb();
                     drawConnections();
                 }, 300);
@@ -881,78 +797,6 @@
             });
         }
 
-        // Draw connection lines between related notes
-        function drawConnections() {
-            // Remove existing connections
-            document.querySelectorAll('.note-connection').forEach(el => el.remove());
-
-            if (openNotes.size < 2) return;
-
-            const noteElements = Array.from(document.querySelectorAll('.note.visible'));
-            if (noteElements.length < 2) return;
-            
-            const connections = [];
-
-            noteElements.forEach(noteEl => {
-                const noteId = noteEl.id === 'welcome' ? 'welcome' : noteEl.id.replace('note-', '');
-                const note = notes[noteId];
-                if (!note || !note.backlinks) return;
-
-                note.backlinks.forEach(backlinkId => {
-                    if (openNotes.has(backlinkId)) {
-                        const targetEl = backlinkId === 'welcome' 
-                            ? document.getElementById('welcome')
-                            : document.getElementById(`note-${backlinkId}`);
-                        if (targetEl && noteEl !== targetEl && targetEl.classList.contains('visible')) {
-                            // Only connect if both are visible and different
-                            const existing = connections.find(c => 
-                                (c.from === noteEl && c.to === targetEl) || 
-                                (c.from === targetEl && c.to === noteEl)
-                            );
-                            if (!existing) {
-                                connections.push({ from: noteEl, to: targetEl });
-                            }
-                        }
-                    }
-                });
-            });
-
-            if (connections.length === 0) return;
-
-            // Create SVG overlay for connections
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.className = 'note-connection';
-            svg.style.position = 'fixed';
-            svg.style.top = '0';
-            svg.style.left = '0';
-            svg.style.width = '100%';
-            svg.style.height = '100%';
-            svg.style.pointerEvents = 'none';
-            svg.style.zIndex = '1';
-            document.body.appendChild(svg);
-
-            connections.forEach(({ from, to }) => {
-                try {
-                    const fromRect = from.getBoundingClientRect();
-                    const toRect = to.getBoundingClientRect();
-                    
-                    // Only draw if both elements are in viewport
-                    if (fromRect.height === 0 || toRect.height === 0) return;
-                    
-                    const fromX = fromRect.left + fromRect.width / 2;
-                    const fromY = fromRect.top + fromRect.height;
-                    const toX = toRect.left + toRect.width / 2;
-                    const toY = toRect.top;
-
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    const midY = (fromY + toY) / 2;
-                    path.setAttribute('d', `M ${fromX} ${fromY} Q ${fromX} ${midY}, ${toX} ${midY} T ${toX} ${toY}`);
-                    svg.appendChild(path);
-                } catch (err) {
-                    // Skip if there's an error
-                }
-            });
-        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
@@ -1018,84 +862,11 @@
             }
         }
 
-        // reveal roots by progressively drawing individual branches (stroke animation)
-        function updateRoots() {
-            const branches = Array.from(document.querySelectorAll('#tree-roots .root-branch'));
-            if (!branches.length) return;
-
-            // configurable parameters for growth
-            const opened = Math.max(0, openNotes.size - 1); // exclude welcome
-            const branchesPerNode = 3; // more branches per opened note for fuller growth
-            const totalToReveal = Math.min(branches.length, opened * branchesPerNode);
-            const baseDuration = 850; // ms per branch draw
-            const stagger = 60; // ms between branch reveals
-
-            // Find the first branch that hasn't been revealed yet
-            let firstUnrevealedIndex = branches.findIndex(b => !b.classList.contains('revealed'));
-            if (firstUnrevealedIndex < 0) firstUnrevealedIndex = totalToReveal;
-
-            branches.forEach((b, i) => {
-                // initialize stroke-dash values once
-                if (!b.dataset.inited) {
-                    try {
-                        const len = Math.ceil(b.getTotalLength());
-                        b.style.strokeDasharray = len + ' ' + len;
-                        b.style.strokeDashoffset = len;
-                        b.style.transition = `stroke-dashoffset ${baseDuration}ms cubic-bezier(.2,.9,.2,1), opacity 260ms ease`;
-                        b.dataset.len = len;
-                        b.dataset.inited = '1';
-                    } catch (err) {
-                        b.dataset.inited = '1';
-                    }
-                }
-
-                const shouldReveal = i < totalToReveal;
-                const isRevealed = b.classList.contains('revealed');
-                
-                if (shouldReveal && !isRevealed) {
-                    // Calculate stagger delay relative to the first unrevealed branch
-                    const delayIndex = i - firstUnrevealedIndex;
-                    // stagger reveals for nicer effect
-                    setTimeout(() => {
-                        // Double-check the branch still needs to be revealed
-                        if (i < Math.min(branches.length, Math.max(0, openNotes.size - 1) * branchesPerNode)) {
-                            b.classList.add('revealed');
-                            // animate stroke drawing
-                            requestAnimationFrame(() => {
-                                b.style.strokeDashoffset = '0';
-                            });
-                        }
-                    }, Math.max(0, delayIndex) * stagger);
-                } else if (!shouldReveal && isRevealed) {
-                    // hide it again (reverse the animation)
-                    const len = b.dataset.len || 0;
-                    b.classList.remove('revealed');
-                    // animate dashoffset back to full length
-                    requestAnimationFrame(() => {
-                        b.style.strokeDashoffset = len;
-                    });
-                }
-            });
-        }
-
-        // ensure update after image loads (in case it's slow)
-        const treeImg = document.getElementById('leafless-tree');
-        if (treeImg) treeImg.addEventListener('load', updateRoots);
 
         window.addEventListener('load', function() { 
             openNoteFromURL(); 
-            updateRoots();
             setupLinkPreviews();
         });
-
-        // Update connections on scroll/resize (throttled)
-        let connectionUpdateTimeout;
-        function scheduleConnectionUpdate() {
-            clearTimeout(connectionUpdateTimeout);
-            connectionUpdateTimeout = setTimeout(drawConnections, 200);
-        }
-        window.addEventListener('scroll', scheduleConnectionUpdate, { passive: true });
-        window.addEventListener('resize', scheduleConnectionUpdate);
     </script>
 </body>
 </html>
